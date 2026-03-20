@@ -20,6 +20,16 @@ class InvalidContextLengthError(ValueError):
         super().__init__("invalid context length")
 
 
+class ConfigGroupNotFoundError(ValueError):
+    def __init__(self, name: str, available: list[str]):
+        super().__init__(f"Configuration group '{name}' not found. Available groups: {', '.join(available)}")
+
+
+class NoConfigGroupError(ValueError):
+    def __init__(self):
+        super().__init__("No configuration groups found. Please add one using `oai2ollama config add ...`.")
+
+
 def _parse_context_length(value: int | str) -> int:
     """Parse context length with support for k/m suffixes"""
     if isinstance(value, int):
@@ -81,8 +91,8 @@ class Settings(BaseSettings):
 
     # Global configuration
     host: str = Field("localhost", description="IP / hostname for the API server")
-    port: int = Field(8000, description="Port for the API server")
-    default_config: str = Field("default", description="Default configuration group to use")
+    port: int = Field(11434, description="Port for the API server")
+    default_config: str | None = Field(None, description="Default configuration group to use")
 
     # Runtime parameter (not persisted)
     config: str | None = Field(None, description="Configuration group to use for this run")
@@ -104,7 +114,23 @@ class Settings(BaseSettings):
             try:
                 with CONFIG_FILE.open("rb") as f:
                     config_data = tomllib.load(f)
+
+                file_default_config = config_data.get("default_config")
+                if isinstance(file_default_config, str):
+                    self.default_config = file_default_config
+
                 for name, group_data in config_data.get("groups", {}).items():
+                    if isinstance(group_data, dict):
+                        model_overrides = group_data.get("model_overrides")
+                        if isinstance(model_overrides, dict):
+                            # Recover from older malformed TOML that wrote default_config
+                            # inside model_overrides as a plain string value.
+                            misplaced_default = model_overrides.get("default_config")
+                            if self.default_config is None and isinstance(misplaced_default, str):
+                                self.default_config = misplaced_default
+
+                            group_data["model_overrides"] = {k: v for k, v in model_overrides.items() if isinstance(v, dict)}
+
                     self.config_groups[name] = ConfigGroup(**group_data)
             except Exception as e:
                 print(f"\n  Warning: failed to load config file: {e}\n", file=stderr)
@@ -153,10 +179,17 @@ class Settings(BaseSettings):
 
     def get_active_config(self) -> ConfigGroup:
         """Get the currently active configuration group"""
-        config_name = self.config or self.default_config
+        config_name = self.config if self.config is not None else self.resolve_default_config_name()
         if config_name not in self.config_groups:
-            raise ValueError(f"Configuration group '{config_name}' not found. Available groups: {', '.join(self.config_groups.keys())}")
+            raise ConfigGroupNotFoundError(config_name, list(self.config_groups.keys()))
         return self.config_groups[config_name]
+
+    def resolve_default_config_name(self) -> str:
+        if self.default_config is not None:
+            return self.default_config
+        if self.config_groups:
+            return next(iter(self.config_groups))
+        raise NoConfigGroupError
 
 
 # Do NOT initialize at import time, let CLI handle it
@@ -165,8 +198,10 @@ __all__ = [
     "CONFIG_FILE",
     "MODEL_REGISTRY_FILE",
     "ConfigGroup",
+    "ConfigGroupNotFoundError",
     "InvalidContextLengthError",
     "ModelRegistryEntry",
+    "NoConfigGroupError",
     "Settings",
     "_parse_context_length",
 ]

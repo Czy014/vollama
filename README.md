@@ -14,32 +14,38 @@ You can run directly via `uvx` (if you have `uv` installed) or `pipx`:
 uvx oai2ollama --help
 ```
 
-```text
-usage: oai2ollama [--api-key str] [--base-url HttpUrl] [--capabilities list[str]] [--models list[str]] [--host str]
-options:
-  --help, -h                    Show this help message and exit
-  --api-key str                 API key for authentication (required)
-  --base-url HttpUrl            Base URL for the OpenAI-compatible API (required)
-  --capabilities, -c list[str]  Extra capabilities to mark the model as supporting
-  --models, -m list[str]        Extra models to include in the /api/tags response
-  --host str                    IP / hostname for the API server (default: localhost)
+常用命令：
+
+```sh
+oai2ollama status
+oai2ollama config list
+oai2ollama config add demo --base-url https://example.com/v1 --api-key sk-xxx
+oai2ollama config discover demo
+oai2ollama run --config demo
 ```
 
-> [!TIP]
-> To mark the model as supporting certain capabilities, you can use the `--capabilities` (or `-c`) option with a list of strings. For example, the following two syntaxes are supported:
->
-> `oai2ollama -c tools` or `oai2ollama --capabilities tools`
->
-> `oai2ollama -c tools -c vision` or `oai2ollama --capabilities -c tools,vision`
->
-> To support models that are not returned by the `/models` endpoint, use the `--models` (or `-m`) option to add them to the `/api/tags` response:
->
-> `oai2ollama -m model1 -m model2` or `oai2ollama -m model1,model2`
->
-> Capabilities currently [used by Ollama](https://github.com/ollama/ollama/blob/main/types/model/capability.go#L6-L11) are:
-> `tools`, `insert`, `vision`, `embedding`, `thinking` and `completion`. We always include `completion`.
+模型仓库命令：
 
-Or you can use a `.env` file to set these options:
+```sh
+oai2ollama model list
+oai2ollama model set my-model --context-length 128k --capability tools --capability vision
+oai2ollama model remove my-model
+```
+
+配置文件默认位于：
+
+```text
+~/.config/oai2ollama/config.toml
+~/.config/oai2ollama/models.toml
+```
+
+仍兼容旧参数（会自动映射到 `run`）：
+
+```sh
+oai2ollama --api-key sk-xxx --base-url https://example.com/v1 --models "['custom-model']"
+```
+
+也可以使用 `.env` 文件：
 
 ```properties
 OPENAI_API_KEY=your_api_key

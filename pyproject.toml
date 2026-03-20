@@ -2,7 +2,7 @@
 name = "oai2ollama"
 version = "1.2.8.1"
 description = "Wrap any OpenAI-compatible API into an Ollama-compatible API."
-authors = [{ name = "Muspi Merol", email = "me@promplate.dev" }]
+authors = [{ name = "czy" }]
 requires-python = ">=3.12"
 readme = "README.md"
 dependencies = [
@@ -16,27 +16,21 @@ dependencies = [
     "rich>=14.3.3",
 ]
 
-[project.urls]
-documentation = "https://oai2ollama.vercel.app/"
-repository = "https://github.com/CNSeniorious000/oai2ollama"
-
 [project.scripts]
 oai2ollama = "oai2ollama:start"
+
+[tool.uv]
+package = true
 
 # [build-system]
 # requires = ["uv_build>=0.7,<0.10"]
 # build-backend = "uv_build"
-
-[tool.uv]
-package = true
 
 # [tool.uv.build-backend]
 # module-root = ""
 
 [tool.m.aliases]
 dev = "uvicorn-hmr oai2ollama:app --port 11434"
-df = "deno fmt --line-width 12345 --prose-wrap preserve docs"
-z = "uv run zensical serve"
 
 [tool.ruff]
 line-length = 320
@@ -61,7 +55,7 @@ extend-select = [
 ]
 
 [dependency-groups]
-dev = ["mkdocstrings-python~=2.0.1", "ruff~=0.14.0", "zensical==0.0.15"]
+dev = ["ruff~=0.14.0"]
 
 [tool.pyright]
 typeCheckingMode = "standard"

@@ -43,7 +43,7 @@ class ModelRegistry:
         self.user_defined = {}
         if MODEL_REGISTRY_FILE.exists():
             try:
-                with open(MODEL_REGISTRY_FILE, "rb") as f:
+                with MODEL_REGISTRY_FILE.open("rb") as f:
                     model_data = tomllib.load(f)
                 for name, entry in model_data.items():
                     self.user_defined[name] = ModelRegistryEntry(**entry)
@@ -52,7 +52,7 @@ class ModelRegistry:
 
     def get_model_config(self, model_name: str, group_overrides: dict[str, dict] | None = None) -> dict[str, int | list[str] | str | None]:
         config: dict[str, int | list[str] | str | None] = {
-            "context_length": 8000,
+            "context_length": 32768,
             "capabilities": ["completion"],
         }
 

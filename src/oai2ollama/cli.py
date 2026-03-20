@@ -19,13 +19,17 @@ console = Console()
 
 
 def _save_config_groups(settings):
-    data: dict = {"groups": {}}
     if CONFIG_FILE.exists():
-        with CONFIG_FILE.open("rb") as f:
-            loaded = tomllib.load(f)
-        if isinstance(loaded, dict):
-            data.update(loaded)
-    data["groups"] = {name: group.model_dump(exclude_none=True) for name, group in settings.config_groups.items()}
+        try:
+            with CONFIG_FILE.open("rb") as f:
+                tomllib.load(f)
+        except tomllib.TOMLDecodeError as err:
+            typer.echo(f"Warning: invalid config file, rewriting it: {err}", err=True)
+
+    data: dict = {
+        "default_config": settings.default_config,
+        "groups": {name: group.model_dump(exclude_none=True) for name, group in settings.config_groups.items()},
+    }
     with CONFIG_FILE.open("w", encoding="utf-8") as f:
         f.write(to_toml_str(data))
 
@@ -38,7 +42,8 @@ def _save_model_registry(raw: dict):
 def _parse_literal(raw: str, expected: type):
     parsed = ast.literal_eval(raw)
     if not isinstance(parsed, expected):
-        raise typer.BadParameter(f"Expected {expected.__name__}, got {type(parsed).__name__}")
+        typer.echo(f"Invalid literal type: expected {expected.__name__}, got {type(parsed).__name__}", err=True)
+        raise typer.Exit(1)
     return parsed
 
 
@@ -101,7 +106,8 @@ def run_server(
         active_config.model_names = asyncio.run(discover_models(active_config))
         _save_config_groups(settings)
 
-    console.print(f"[bold green]Starting with config group: {settings.config or settings.default_config}[/bold green]")
+    active_name = settings.config or settings.resolve_default_config_name()
+    console.print(f"[bold green]Starting with config group: {active_name}[/bold green]")
     uvicorn.run("oai2ollama._app:app", host=host or settings.host, port=port or settings.port)
 
 
@@ -109,11 +115,16 @@ def run_server(
 def status():
     settings = get_settings()
     registry = get_model_registry()
+    try:
+        effective_default = settings.resolve_default_config_name()
+    except Exception:
+        effective_default = "<none>"
     console.print("\n[bold blue]oai2ollama Status[/bold blue]")
     console.print(f"  Configuration directory: {CONFIG_DIR}")
     console.print(f"  Configuration file: {CONFIG_FILE}")
     console.print(f"  Model registry file: {MODEL_REGISTRY_FILE}")
     console.print(f"  Default config group: {settings.default_config}")
+    console.print(f"  Effective default group: {effective_default}")
     console.print(f"  Config groups: {len(settings.config_groups)}")
     console.print(f"  Models: {len(registry.user_defined)} user-defined, {len(BUILTIN_MODELS)} built-in\n")
 
@@ -125,14 +136,20 @@ cli.add_typer(config_cli, name="config")
 @config_cli.command("list", help="List all configuration groups")
 def list_configs():
     settings = get_settings()
+    try:
+        effective_default = settings.resolve_default_config_name()
+    except Exception:
+        effective_default = None
+
     table = Table(title="Configuration Groups")
     table.add_column("Name", style="cyan")
     table.add_column("Base URL", style="magenta")
     table.add_column("Models", style="green")
     table.add_column("Auto Discover", style="yellow")
+    table.add_column("Default", style="blue")
 
     for name, group in settings.config_groups.items():
-        table.add_row(name, str(group.base_url), str(len(group.model_names)), "yes" if group.auto_discover else "no")
+        table.add_row(name, str(group.base_url), str(len(group.model_names)), "yes" if group.auto_discover else "no", "yes" if name == effective_default else "")
 
     console.print(table)
 
@@ -141,7 +158,8 @@ def list_configs():
 def show_config(name: str):
     settings = get_settings()
     if name not in settings.config_groups:
-        raise typer.BadParameter(f"Unknown config group: {name}")
+        typer.echo(f"Unknown config group: {name}", err=True)
+        raise typer.Exit(1)
     group = settings.config_groups[name]
     console.print(f"\n[bold]Group:[/bold] {name}")
     console.print(f"  base_url: {group.base_url}")
@@ -158,12 +176,18 @@ def add_config(
 ):
     settings = get_settings()
     if name in settings.config_groups:
-        raise typer.BadParameter(f"Config group already exists: {name}")
+        typer.echo(f"Config group already exists: {name}", err=True)
+        raise typer.Exit(1)
 
     group = ConfigGroup(base_url=_parse_http_url(base_url), api_key=api_key, auto_discover=auto_discover)
     if auto_discover:
         group.model_names = asyncio.run(discover_models(group))
     settings.config_groups[name] = group
+
+    # If default group is not set yet, use the first added group as effective default.
+    if settings.default_config is None:
+        settings.default_config = name
+
     _save_config_groups(settings)
     console.print(f"Added config group: {name}")
 
@@ -172,11 +196,24 @@ def add_config(
 def discover_config(name: str):
     settings = get_settings()
     if name not in settings.config_groups:
-        raise typer.BadParameter(f"Unknown config group: {name}")
+        typer.echo(f"Unknown config group: {name}", err=True)
+        raise typer.Exit(1)
     group = settings.config_groups[name]
     group.model_names = asyncio.run(discover_models(group))
     _save_config_groups(settings)
     console.print(f"Discovered {len(group.model_names)} models for {name}")
+
+
+@config_cli.command("use", help="Set default configuration group")
+def use_config(name: str):
+    settings = get_settings()
+    if name not in settings.config_groups:
+        typer.echo(f"Unknown config group: {name}", err=True)
+        raise typer.Exit(1)
+
+    settings.default_config = name
+    _save_config_groups(settings)
+    console.print(f"Default config group set to: {name}")
 
 
 model_cli = typer.Typer(help="Manage global model registry")
@@ -230,12 +267,14 @@ def set_model(
 @model_cli.command("remove", help="Remove a model from the global registry")
 def remove_model(name: str):
     if not MODEL_REGISTRY_FILE.exists():
-        raise typer.BadParameter("Model registry file does not exist")
+        typer.echo("Model registry file does not exist", err=True)
+        raise typer.Exit(1)
 
     with MODEL_REGISTRY_FILE.open("rb") as f:
         raw = tomllib.load(f)
     if name not in raw:
-        raise typer.BadParameter(f"Model not found: {name}")
+        typer.echo(f"Model not found: {name}", err=True)
+        raise typer.Exit(1)
 
     del raw[name]
     _save_model_registry(raw)
