@@ -22,12 +22,9 @@ oai2ollama = "oai2ollama:start"
 [tool.uv]
 package = true
 
-# [build-system]
-# requires = ["uv_build>=0.7,<0.10"]
-# build-backend = "uv_build"
-
-# [tool.uv.build-backend]
-# module-root = ""
+[build-system]
+requires = ["uv_build>=0.10.9,<0.11.0"]
+build-backend = "uv_build"
 
 [tool.m.aliases]
 dev = "uvicorn-hmr oai2ollama:app --port 11434"
@@ -55,10 +52,7 @@ extend-select = [
 ]
 
 [dependency-groups]
-dev = [
-    "pre-commit>=4.5.1",
-    "ruff~=0.14.0",
-]
+dev = ["pre-commit>=4.5.1", "ruff~=0.14.0"]
 
 [tool.pyright]
 typeCheckingMode = "standard"
