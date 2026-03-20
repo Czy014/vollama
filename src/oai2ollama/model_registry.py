@@ -2,6 +2,7 @@ import tomllib
 from sys import stderr
 
 from .config import MODEL_REGISTRY_FILE, ModelRegistryEntry
+from .toml_io import to_toml_str
 
 BUILTIN_MODELS = {
     "gpt-4o": {"context_length": 128000, "capabilities": ["tools", "vision"]},
@@ -39,8 +40,19 @@ class ModelRegistry:
         self.user_defined: dict[str, ModelRegistryEntry] = {}
         self.reload()
 
+    def _ensure_registry_file(self):
+        if MODEL_REGISTRY_FILE.exists():
+            return
+        try:
+            MODEL_REGISTRY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with MODEL_REGISTRY_FILE.open("w", encoding="utf-8") as f:
+                f.write(to_toml_str({}))
+        except Exception as err:
+            print(f"\n  Warning: failed to create model registry file: {err}\n", file=stderr)
+
     def reload(self):
         self.user_defined = {}
+        self._ensure_registry_file()
         if MODEL_REGISTRY_FILE.exists():
             try:
                 with MODEL_REGISTRY_FILE.open("rb") as f:

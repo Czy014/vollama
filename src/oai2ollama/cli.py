@@ -39,6 +39,42 @@ def _save_model_registry(raw: dict):
         f.write(to_toml_str(raw))
 
 
+def _import_discovered_models_to_registry(model_names: list[str]):
+    registry = get_model_registry()
+    raw: dict = {}
+    if MODEL_REGISTRY_FILE.exists():
+        try:
+            with MODEL_REGISTRY_FILE.open("rb") as f:
+                loaded = tomllib.load(f)
+            if isinstance(loaded, dict):
+                raw = loaded
+        except tomllib.TOMLDecodeError as err:
+            typer.echo(f"Warning: invalid model registry file, rewriting it: {err}", err=True)
+
+    changed = False
+    for model_name in model_names:
+        if model_name in raw:
+            continue
+
+        merged = registry.get_model_config(model_name)
+        context_length = merged.get("context_length", 32768)
+        if not isinstance(context_length, int):
+            context_length = 32768
+
+        capabilities_raw = merged.get("capabilities", ["completion"])
+        capabilities = [cap for cap in capabilities_raw if isinstance(cap, str)] if isinstance(capabilities_raw, list) else ["completion"]
+
+        raw[model_name] = {
+            "context_length": context_length,
+            "capabilities": capabilities,
+        }
+        changed = True
+
+    if changed:
+        _save_model_registry(raw)
+        registry.reload()
+
+
 def _parse_literal(raw: str, expected: type):
     parsed = ast.literal_eval(raw)
     if not isinstance(parsed, expected):
@@ -105,10 +141,11 @@ def run_server(
         console.print(f"\n[bold blue]Discovering models from {active_config.base_url}...[/bold blue]")
         active_config.model_names = asyncio.run(discover_models(active_config))
         _save_config_groups(settings)
+        _import_discovered_models_to_registry(active_config.model_names)
 
     active_name = settings.config or settings.resolve_default_config_name()
     console.print(f"[bold green]Starting with config group: {active_name}[/bold green]")
-    uvicorn.run("oai2ollama._app:app", host=host or settings.host, port=port or settings.port)
+    uvicorn.run("oai2ollama.app:app", host=host or settings.host, port=port or settings.port)
 
 
 @cli.command("status", help="Show current status and configuration")
@@ -182,6 +219,7 @@ def add_config(
     group = ConfigGroup(base_url=_parse_http_url(base_url), api_key=api_key, auto_discover=auto_discover)
     if auto_discover:
         group.model_names = asyncio.run(discover_models(group))
+        _import_discovered_models_to_registry(group.model_names)
     settings.config_groups[name] = group
 
     # If default group is not set yet, use the first added group as effective default.
@@ -200,6 +238,7 @@ def discover_config(name: str):
         raise typer.Exit(1)
     group = settings.config_groups[name]
     group.model_names = asyncio.run(discover_models(group))
+    _import_discovered_models_to_registry(group.model_names)
     _save_config_groups(settings)
     console.print(f"Discovered {len(group.model_names)} models for {name}")
 

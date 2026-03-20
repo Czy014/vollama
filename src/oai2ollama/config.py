@@ -70,7 +70,7 @@ class ModelRegistryEntry(BaseSettings):
     """Entry in the global model registry"""
 
     context_length: int = Field(default=8000, description="Model context window size")
-    capabilities: list[Literal["tools", "insert", "vision", "embedding", "thinking"]] = Field(default_factory=list)
+    capabilities: list[Literal["tools", "insert", "vision", "embedding", "thinking", "completion"]] = Field(default_factory=list)
     description: str | None = None
 
 

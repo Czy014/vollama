@@ -19,7 +19,7 @@ async def _new_client():
 @app.get("/api/tags")
 async def models(client=_new_client):
     active_config = get_settings().get_active_config()
-    res = await client.get("/models")
+    res = await client.get("models")
     res.raise_for_status()
     try:
         data = res.json()["data"]
@@ -64,7 +64,7 @@ async def show_model(request: Request):
 
 @app.get("/v1/models")
 async def list_models(client=_new_client):
-    res = await client.get("/models")
+    res = await client.get("models")
     res.raise_for_status()
     return res.json()
 
@@ -76,14 +76,14 @@ async def chat_completions(request: Request, client=_new_client):
     if data.get("stream", False):
 
         async def stream():
-            async with client.stream("POST", "/chat/completions", json=data) as response:
+            async with client.stream("POST", "chat/completions", json=data) as response:
                 async for chunk in response.aiter_bytes():
                     yield chunk
 
         return StreamingResponse(stream(), media_type="text/event-stream")
 
     else:
-        res = await client.post("/chat/completions", json=data)
+        res = await client.post("chat/completions", json=data)
         res.raise_for_status()
         return res.json()
 
