@@ -39,6 +39,28 @@ def _save_model_registry(raw: dict):
         f.write(to_toml_str(raw))
 
 
+def _flatten_model_registry(raw: dict) -> dict[str, dict]:
+    flattened: dict[str, dict] = {}
+    entry_fields = {"context_length", "capabilities", "description"}
+
+    def walk(prefix: str, value):
+        if not isinstance(value, dict):
+            return
+
+        if any(field in value for field in entry_fields):
+            flattened[prefix] = {key: value[key] for key in ("context_length", "capabilities", "description") if key in value}
+            return
+
+        for key, nested in value.items():
+            next_prefix = f"{prefix}.{key}" if prefix else str(key)
+            walk(next_prefix, nested)
+
+    for key, value in raw.items():
+        walk(str(key), value)
+
+    return flattened
+
+
 def _import_discovered_models_to_registry(model_names: list[str]):
     registry = get_model_registry()
     raw: dict = {}
@@ -47,7 +69,7 @@ def _import_discovered_models_to_registry(model_names: list[str]):
             with MODEL_REGISTRY_FILE.open("rb") as f:
                 loaded = tomllib.load(f)
             if isinstance(loaded, dict):
-                raw = loaded
+                raw = _flatten_model_registry(loaded)
         except tomllib.TOMLDecodeError as err:
             typer.echo(f"Warning: invalid model registry file, rewriting it: {err}", err=True)
 
@@ -291,7 +313,7 @@ def set_model(
         with MODEL_REGISTRY_FILE.open("rb") as f:
             loaded = tomllib.load(f)
         if isinstance(loaded, dict):
-            raw = loaded
+            raw = _flatten_model_registry(loaded)
 
     raw[name] = {
         "context_length": parsed,
@@ -310,7 +332,7 @@ def remove_model(name: str):
         raise typer.Exit(1)
 
     with MODEL_REGISTRY_FILE.open("rb") as f:
-        raw = tomllib.load(f)
+        raw = _flatten_model_registry(tomllib.load(f))
     if name not in raw:
         typer.echo(f"Model not found: {name}", err=True)
         raise typer.Exit(1)

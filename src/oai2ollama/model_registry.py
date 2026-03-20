@@ -32,6 +32,28 @@ BUILTIN_MODELS = {
 }
 
 
+def _flatten_model_registry_data(raw: dict) -> dict[str, dict]:
+    flattened: dict[str, dict] = {}
+    entry_fields = {"context_length", "capabilities", "description"}
+
+    def walk(prefix: str, value):
+        if not isinstance(value, dict):
+            return
+
+        if any(field in value for field in entry_fields):
+            flattened[prefix] = {key: value[key] for key in ("context_length", "capabilities", "description") if key in value}
+            return
+
+        for key, nested in value.items():
+            next_prefix = f"{prefix}.{key}" if prefix else str(key)
+            walk(next_prefix, nested)
+
+    for key, value in raw.items():
+        walk(str(key), value)
+
+    return flattened
+
+
 class ModelRegistry:
     """Global model registry that combines built-in and user-defined metadata."""
 
@@ -57,8 +79,15 @@ class ModelRegistry:
             try:
                 with MODEL_REGISTRY_FILE.open("rb") as f:
                     model_data = tomllib.load(f)
-                for name, entry in model_data.items():
-                    self.user_defined[name] = ModelRegistryEntry(**entry)
+                if not isinstance(model_data, dict):
+                    return
+
+                flattened = _flatten_model_registry_data(model_data)
+                for name, entry in flattened.items():
+                    try:
+                        self.user_defined[name] = ModelRegistryEntry(**entry)
+                    except Exception as entry_err:
+                        print(f"\n  Warning: invalid model registry entry '{name}': {entry_err}\n", file=stderr)
             except Exception as err:
                 print(f"\n  Warning: failed to load model registry: {err}\n", file=stderr)
 

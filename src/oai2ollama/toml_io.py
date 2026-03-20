@@ -30,12 +30,15 @@ def to_toml_str(data: dict) -> str:
 
     lines: list[str] = []
 
-    def write_table(table_path: str, table_data: dict):
+    def _format_table_path(parts: list[str]) -> str:
+        return ".".join(_format_key(part) for part in parts)
+
+    def write_table(table_path_parts: list[str], table_data: dict):
         scalar_items = {k: v for k, v in table_data.items() if not isinstance(v, dict)}
         nested_tables = {k: v for k, v in table_data.items() if isinstance(v, dict)}
 
-        if table_path:
-            lines.append(f"[{table_path}]")
+        if table_path_parts:
+            lines.append(f"[{_format_table_path(table_path_parts)}]")
 
         for key, value in scalar_items.items():
             lines.append(f"{_format_key(str(key))} = {_format_value(value)}")
@@ -44,14 +47,14 @@ def to_toml_str(data: dict) -> str:
             lines.append("")
 
         for idx, (key, value) in enumerate(nested_tables.items()):
-            next_path = f"{table_path}.{key}" if table_path else key
+            next_path = [*table_path_parts, str(key)]
             write_table(next_path, value)
             if idx != len(nested_tables) - 1:
                 lines.append("")
 
     for idx, (top_key, top_value) in enumerate(data.items()):
         if isinstance(top_value, dict):
-            write_table(top_key, top_value)
+            write_table([str(top_key)], top_value)
         else:
             lines.append(f"{_format_key(str(top_key))} = {_format_value(top_value)}")
         if idx != len(data) - 1:
