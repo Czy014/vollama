@@ -10,7 +10,10 @@ dependencies = [
     "fastapi>=0.115.14,<0.129.0",
     "httpx[http2]~=0.28.1",
     "pydantic-settings>=2.10.1,<2.13.0",
+    "platformdirs~=4.3.6",
     "uvicorn-hmr~=0.1.1",
+    "typer>=0.24.1",
+    "rich>=14.3.3",
 ]
 
 [project.urls]
@@ -20,12 +23,15 @@ repository = "https://github.com/CNSeniorious000/oai2ollama"
 [project.scripts]
 oai2ollama = "oai2ollama:start"
 
-[build-system]
-requires = ["uv_build>=0.7,<0.10"]
-build-backend = "uv_build"
+# [build-system]
+# requires = ["uv_build>=0.7,<0.10"]
+# build-backend = "uv_build"
 
-[tool.uv.build-backend]
-module-root = ""
+[tool.uv]
+package = true
+
+# [tool.uv.build-backend]
+# module-root = ""
 
 [tool.m.aliases]
 dev = "uvicorn-hmr oai2ollama:app --port 11434"

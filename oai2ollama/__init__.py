@@ -1,11 +1,4 @@
 from ._app import app
-from .config import env
-
-
-def start():
-    import uvicorn
-
-    uvicorn.run(app, host=env.host, port=11434)
-
+from .cli import main as start
 
 __all__ = ["app", "start"]
