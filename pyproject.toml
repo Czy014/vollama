@@ -1,5 +1,5 @@
 [project]
-name = "oai2ollama"
+name = "vollama"
 version = "1.2.8.1"
 description = "Wrap any OpenAI-compatible API into an Ollama-compatible API."
 authors = [{ name = "czy" }]
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.scripts]
-oai2ollama = "oai2ollama:start"
+vollama = "vollama:start"
 
 [tool.uv]
 package = true
@@ -27,7 +27,7 @@ requires = ["uv_build>=0.10.9,<0.11.0"]
 build-backend = "uv_build"
 
 [tool.m.aliases]
-dev = "uvicorn-hmr oai2ollama:app --port 11434"
+dev = "uvicorn-hmr vollama:app --port 11434"
 
 [tool.ruff]
 line-length = 320
