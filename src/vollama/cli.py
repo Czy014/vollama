@@ -167,7 +167,7 @@ def run_server(
 
     active_name = settings.config or settings.resolve_default_config_name()
     console.print(f"[bold green]Starting with config group: {active_name}[/bold green]")
-    uvicorn.run("oai2ollama.app:app", host=host or settings.host, port=port or settings.port)
+    uvicorn.run("vollama.app:app", host=host or settings.host, port=port or settings.port)
 
 
 @cli.command("status", help="Show current status and configuration")
@@ -178,7 +178,7 @@ def status():
         effective_default = settings.resolve_default_config_name()
     except Exception:
         effective_default = "<none>"
-    console.print("\n[bold blue]oai2ollama Status[/bold blue]")
+    console.print("\n[bold blue]vollama Status[/bold blue]")
     console.print(f"  Configuration directory: {CONFIG_DIR}")
     console.print(f"  Configuration file: {CONFIG_FILE}")
     console.print(f"  Model registry file: {MODEL_REGISTRY_FILE}")
@@ -344,7 +344,7 @@ def remove_model(name: str):
 
 
 def main():
-    # Backward compatibility: `oai2ollama --api-key ...` behaves like `oai2ollama run ...`
+    # Backward compatibility: `vollama --api-key ...` behaves like `vollama run ...`
     if len(sys.argv) == 1:
         sys.argv.insert(1, "run")
     elif len(sys.argv) > 1:

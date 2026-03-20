@@ -9,7 +9,7 @@ from pydantic import Field, HttpUrl, field_validator, model_validator
 from pydantic_settings import BaseSettings, CliSuppress
 
 # Configuration directory setup
-CONFIG_DIR = Path(user_config_dir("oai2ollama", appauthor=False))
+CONFIG_DIR = Path(user_config_dir("vollama", appauthor=False))
 CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 CONFIG_FILE = CONFIG_DIR / "config.toml"
 MODEL_REGISTRY_FILE = CONFIG_DIR / "models.toml"
@@ -27,7 +27,7 @@ class ConfigGroupNotFoundError(ValueError):
 
 class NoConfigGroupError(ValueError):
     def __init__(self):
-        super().__init__("No configuration groups found. Please add one using `oai2ollama config add ...`.")
+        super().__init__("No configuration groups found. Please add one using `vollama config add ...`.")
 
 
 def _parse_context_length(value: int | str) -> int:

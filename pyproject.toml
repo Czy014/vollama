@@ -1,8 +1,8 @@
 [project]
 name = "vollama"
-version = "1.2.8.1"
-description = "Wrap any OpenAI-compatible API into an Ollama-compatible API."
-authors = [{ name = "czy" }]
+version = "0.1.0"
+description = "Virtual Ollama: Wrap any OpenAI-compatible API into an Ollama-compatible API."
+authors = [{ name = "Czy014" }]
 requires-python = ">=3.12"
 readme = "README.md"
 dependencies = [
