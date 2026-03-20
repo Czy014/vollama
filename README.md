@@ -57,32 +57,3 @@ MODELS=["custom-model1","custom-model2"]
 
 > [!WARNING]
 > The option name `capacities` is deprecated. Use `capabilities` instead. The old name still works for now but will emit a deprecation warning.
-
-### with Docker
-
-First, build the image:
-
-```sh
-docker build -t oai2ollama .
-```
-
-Then, run the container with your credentials:
-
-```sh
-docker run -p 11434:11434 \
-  -e OPENAI_API_KEY="your_api_key" \
-  -e OPENAI_BASE_URL="your_base_url" \
-  oai2ollama
-```
-
-Or you can pass these as command line arguments:
-
-```sh
-docker run -p 11434:11434 oai2ollama --api-key your_api_key --base-url your_base_url
-```
-
-To have the server listen on a different host, like all IPv6 interfaces, use the `--host` argument:
-
-```sh
-docker run -p 11434:11434 oai2ollama --host "::"
-```
