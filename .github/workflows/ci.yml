@@ -19,10 +19,9 @@ jobs:
         run: |
           ruff format --check --diff
           ruff check --diff
-      - uses: oven-sh/setup-bun@v2
       - name: Check typing
         run: |
-          bunx pyright
+          uvx ty check
   typos:
     runs-on: ubuntu-latest
     steps:

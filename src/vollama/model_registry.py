@@ -1,10 +1,15 @@
 import tomllib
 from sys import stderr
+from typing import Literal, TypedDict
 
 from .config import MODEL_REGISTRY_FILE, ModelRegistryEntry
 from .toml_io import to_toml_str
 
-BUILTIN_MODELS = {
+class ModelInfo(TypedDict):
+    context_length: int
+    capabilities: list[Literal["tools", "vision", "insert", "embedding", "thinking", "completion"]]
+
+BUILTIN_MODELS: dict[str, ModelInfo] = {
     "gpt-4o": {"context_length": 128000, "capabilities": ["tools", "vision"]},
     "gpt-4o-mini": {"context_length": 128000, "capabilities": ["tools", "vision"]},
     "gpt-4-turbo": {"context_length": 128000, "capabilities": ["tools", "vision"]},
@@ -98,7 +103,9 @@ class ModelRegistry:
         }
 
         if model_name in self.builtin:
-            config.update(self.builtin[model_name])
+            builtin_entry = self.builtin[model_name]
+            config["context_length"] = builtin_entry["context_length"]
+            config["capabilities"] = list(builtin_entry["capabilities"])
 
         if model_name in self.user_defined:
             config.update(self.user_defined[model_name].model_dump(exclude_none=True))
