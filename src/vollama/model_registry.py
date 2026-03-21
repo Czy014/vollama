@@ -5,9 +5,11 @@ from typing import Literal, TypedDict
 from .config import MODEL_REGISTRY_FILE, ModelRegistryEntry
 from .toml_io import to_toml_str
 
+
 class ModelInfo(TypedDict):
     context_length: int
     capabilities: list[Literal["tools", "vision", "insert", "embedding", "thinking", "completion"]]
+
 
 BUILTIN_MODELS: dict[str, ModelInfo] = {
     "gpt-4o": {"context_length": 128000, "capabilities": ["tools", "vision"]},
